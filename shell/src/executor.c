@@ -1,4 +1,5 @@
 #include "../include/executor.h"
+#include <asm-generic/errno-base.h>
 #include <linux/limits.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -30,42 +31,17 @@ int ExecuteCommandInFork(command* command) {
         argv[0] = start->arg;
         start = start->next;
     } while(start != command->args && start);
-
-	if (strchr(command->args[0].arg, '/'))
-		return execve(command->args[0].arg, argv, __environ);
-
-	if (!path) path = "/usr/local/bin:/bin:/usr/bin";
-
-    const char* file = argv[0];
-
-	k = strnlen(file, MAX_LINE_LENGTH) + 1;
-	l = strnlen(path, MAX_LINE_LENGTH) + 1;
-
-	for(p = path; ; p = z) {
-		char b[l+k+1];
-		z = strchr(p, ':');
-		if (z - p >= l) {
-			if (!*z++) break;
-			continue;
-		}
-		memcpy(b, p, z - p);
-		b[z - p] = '/';
-		memcpy(b + (z - p) + (z > p), file, k + 1);
-
-        if (access(b, F_OK) == 0) {
-            if (access(b, X_OK)) {
-                execve(b, argv, __environ);
-                if (errno != EACCES) {
-                    return EXIT_FAILURE;
-                }
-            }
-            return NOT_ENOUGH_PERMISSIONS;
-        } 
-
-		if (!*z++) break;
-	}
     
-	return ALLOC_FAILED;
+    execvp(argv[0], argv);
+
+    switch (errno) {
+        case ENOENT:
+            return ENOENT;
+        case EACCES:
+            return EACCES;
+        default:
+            return 0;
+    }
 }       
 
 int ExecuteFork(command* command) {
@@ -75,10 +51,20 @@ int ExecuteFork(command* command) {
     pid = fork();
     if (pid == 0) {
         // Child process
-        if (ExecuteCommand(command) == EXIT_FAILURE) {
-            perror("lsh: ");
+        switch (ExecuteCommandInFork(command)) {
+            case ENOENT:
+                perror(command->args->arg);
+                perror(": no such file or directory\n");
+                break;
+            case EACCES:
+                perror(command->args->arg);
+                perror(": permission denied\n");
+                break;
+            case ALLOCFAILED:
+                perror("lsh: Error during allocation");
+                exit(EXIT_FAILURE);
+                break;
         }
-        exit(EXIT_FAILURE);
     } else if (pid < 0) {
         // Error forking
         perror(command->args->arg);
@@ -107,10 +93,6 @@ int ExecuteCommands(commandseq* commands) {
 int Execute(pipelineseq* seq) {
     for (pipelineseq* cur = seq; cur; cur = cur->next) {
         int status = ExecuteCommands(cur->pipeline->commands);
-        if (status != OK_STATUS) {
-            return status;
-        }
     }
-
     return OK_STATUS;
 }
