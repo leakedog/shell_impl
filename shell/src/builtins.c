@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "builtins.h"
+#include "../include/builtins.h"
 
 int echo(char*[]);
 int undefined(char *[]);

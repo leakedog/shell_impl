@@ -1,8 +1,8 @@
 #include <stdio.h>
 
-#include "config.h"
-#include "siparse.h"
-#include "utils.h"
+#include "../include/config.h"
+#include "../include/siparse.h"
+#include "../include/utils.h"
 
 int
 main(int argc, char *argv[])

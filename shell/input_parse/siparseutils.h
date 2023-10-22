@@ -1,3 +1,5 @@
+#include "../include/config.h"
+#include "../include/siparse.h"
 
 void resetutils(void);
 

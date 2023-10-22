@@ -1,7 +1,10 @@
-#include <stdio.h>
+#include "../include/config.h"
+#include "../include/siparse.h"
 
-#include "config.h"
-#include "siparse.h"
+void my_strlen(const char *s, size_t *len)
+{
+    for (*len = 0; s[*len]; (*len)++);
+}
 
 void 
 printcommand(command *pcmd, int k)

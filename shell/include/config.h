@@ -9,4 +9,12 @@
 
 #define PROMPT_STR "$ "
 
+#define NOT_ENOUGH_PERMISSIONS 128
+
+#define NO_FILE_FOUND 129
+
+#define ALLOC_FAILED 1
+
+#define OK_STATUS 0 
+
 #endif /* !_CONFIG_H_ */

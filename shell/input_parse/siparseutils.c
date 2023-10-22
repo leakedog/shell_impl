@@ -1,10 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-#include "config.h"
-#include "siparse.h"
 #include "siparseutils.h"
+
 
 
 /* Static pool of structures for parsing shell commands. */

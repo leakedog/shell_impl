@@ -1,5 +1,9 @@
 #ifndef _SIPARSE_H_
 #define _SIPARSE_H_
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
 #define OK 0
 #define FAIL 1
@@ -60,6 +64,7 @@ typedef struct pipelineseq {
 	struct pipelineseq * next;
 	struct pipelineseq * prev;
 } pipelineseq;
+
 
 /*
  * Parses given string containing sequence of pipelines separated by ';'. 
