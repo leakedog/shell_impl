@@ -3,37 +3,12 @@
 #include "../include/config.h"
 #include "../include/siparse.h"
 #include "../include/utils.h"
+#include "../include/executor.h"
+#include "../include/shell.h"
 
-int
-main(int argc, char *argv[])
+
+int main(int argc, char *argv[])
 {
-	pipelineseq * ln;
-	command *com;
-
-	char buf[2048];
-
-
-	// while (fgets(buf, 2048, stdin)){	
-	// 	ln = parseline(buf);
-	// 	printparsedline(ln);
-	// }
-
-	// return 0;
-
-	// ln = parseline("ls -las | grep k | wc ; echo abc > f1 ;  cat < f2 ; echo abc >> f3\n");
-	// printparsedline(ln);
-	// printf("\n");
-	// com = pickfirstcommand(ln);
-	// printcommand(com,1);
-	printf("i am here\n");
-	ln = parseline("sleep 3 &");
-	printf("finished\n");
-	printparsedline(ln);
-	printf("\n");
-	
-	// ln = parseline("echo  & abc >> f3\n");
-	// printparsedline(ln);
-	// printf("\n");
-	// com = pickfirstcommand(ln);
-	// printcommand(com,1);
+	RunShell();
+	return 0;
 }

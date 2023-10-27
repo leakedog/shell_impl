@@ -7,7 +7,7 @@
 int echo(char*[]);
 int undefined(char *[]);
 
-builtin_pair builtins_table[]={
+builtin_pair builtins_table[]={	
 	{"exit",	&undefined},
 	{"lecho",	&echo},
 	{"lcd",		&undefined},

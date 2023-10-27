@@ -2,9 +2,12 @@
 #define EXECUTOR_H
 #include <unistd.h>
 #include <sys/wait.h>
+#include <errno.h>
 #include "./siparse.h"
 #include "./config.h"
-
+#include "./builtins.h"
+#include <assert.h>
+#include <stdbool.h>
 
 int ExecuteCommandInFork(command* command);
 

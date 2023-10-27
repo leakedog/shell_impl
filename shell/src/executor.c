@@ -1,46 +1,56 @@
 #include "../include/executor.h"
-#include <asm-generic/errno-base.h>
-#include <linux/limits.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
 
 int ExecuteCommandInFork(command* command) {
-    const char *p, *z, *path = getenv("PATH");
-	size_t l, k;
-	int seen_eacces = 0;
 
-	if (!*command->args[0].arg) return -1;
+	if (!command->args) return -1;
 
     int n_args = 0;
     argseq* start = command->args;
     do {
         n_args++;
         start = start->next;
-    } while(start != command->args && start); // Is it cyclic? Or just line
+    } while(start != command->args); // Is it cyclic? Or just line
 
-    char** argv = calloc(n_args, sizeof(char*));
+    char** argv = (char**) malloc(n_args * sizeof(char*));
     
     if (argv == NULL) {
-        return ALLOCFAILED;
+        return ALLOC_FAILED;
     }
 
     start = command->args;
-    
+    int it = 0;
+
+    printf("Execute command with %d args: ", n_args);
     do {
-        argv[0] = start->arg;
+        argv[it++] = start->arg;
+        printf("%s ", argv[it -1]);
         start = start->next;
     } while(start != command->args && start);
-    
-    execvp(argv[0], argv);
+    printf("\n");
 
-    switch (errno) {
-        case ENOENT:
-            return ENOENT;
-        case EACCES:
-            return EACCES;
-        default:
-            return 0;
+    // for (int i = 0; builtins_table[i].name != NULL; i++) {
+    //     if (strncmp(builtins_table[i].name, argv[0], strlen(argv[0])) == 0) {
+    //         return (*builtins_table[i].fun)(argv);
+    //     }
+    // }
+
+
+    int id = execvp(argv[0], argv);
+
+
+    printf("%d\n", id);
+    free(argv);
+    if (id == -1) {
+        switch (errno) {
+            case ENOENT:
+                return ENOENT;
+            case EACCES:
+                return EACCES;
+            default:
+                printf("%d\n", errno);
+        }
+    } else {
+        return OK_STATUS;
     }
 }       
 
@@ -54,17 +64,17 @@ int ExecuteFork(command* command) {
         switch (ExecuteCommandInFork(command)) {
             case ENOENT:
                 perror(command->args->arg);
-                perror(": no such file or directory\n");
                 break;
             case EACCES:
+                printf("WTF");
                 perror(command->args->arg);
-                perror(": permission denied\n");
                 break;
-            case ALLOCFAILED:
+            case ALLOC_FAILED:
                 perror("lsh: Error during allocation");
                 exit(EXIT_FAILURE);
                 break;
         }
+        printf("no error %d\n", errno);
     } else if (pid < 0) {
         // Error forking
         perror(command->args->arg);
@@ -80,19 +90,24 @@ int ExecuteFork(command* command) {
 }
 
 int ExecuteCommands(commandseq* commands) {
-    while (commands) {
+    commandseq* start = commands;
+    do {
         int status = ExecuteFork(commands->com);
         if (status != OK_STATUS) {
             return status;
         }
         commands = commands->next;
-    }
+        printf("Next command\n");
+    } while(commands != start);
     return OK_STATUS;
 }
 
 int Execute(pipelineseq* seq) {
-    for (pipelineseq* cur = seq; cur; cur = cur->next) {
-        int status = ExecuteCommands(cur->pipeline->commands);
-    }
+    pipelineseq* start = seq;
+    do {
+        int status = ExecuteCommands(seq->pipeline->commands);
+        seq = seq->next;
+    } while(start != seq);
+
     return OK_STATUS;
 }
