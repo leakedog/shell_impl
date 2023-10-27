@@ -13,12 +13,12 @@ main(int argc, char *argv[])
 	char buf[2048];
 
 
-	while (fgets(buf, 2048, stdin)){	
-		ln = parseline(buf);
-		printparsedline(ln);
-	}
+	// while (fgets(buf, 2048, stdin)){	
+	// 	ln = parseline(buf);
+	// 	printparsedline(ln);
+	// }
 
-	return 0;
+	// return 0;
 
 	ln = parseline("ls -las | grep k | wc ; echo abc > f1 ;  cat < f2 ; echo abc >> f3\n");
 	printparsedline(ln);

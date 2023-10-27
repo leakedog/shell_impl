@@ -53,6 +53,8 @@ command* ParseCommand(const char* buf_start, const char* buf_end) {
         }
 
         char c = *it;
+        printf("%c\n", c);
+
         if (c == '>' || c == '<') {
             int redir_type = ROUT;
             const char* start_it = it + 1;
