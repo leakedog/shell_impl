@@ -1,45 +1,28 @@
 #include "../include/executor.h"
 
-int ExecuteCommandInFork(command* command) {
 
-	if (!command->args) return -1;
+char* commands_buffer[MAX_COMMAND_CNT];
 
-    int n_args = 0;
+
+char** GetArgvFromCommmand(command* command, int* n_args) {
+    if (!command->args) return NULL;
+    *n_args = 0;
     argseq* start = command->args;
     do {
-        n_args++;
-        start = start->next;
-    } while(start != command->args); // Is it cyclic? Or just line
-
-    char** argv = (char**) malloc(n_args * sizeof(char*));
-    
-    if (argv == NULL) {
-        return ALLOC_FAILED;
-    }
-
-    start = command->args;
-    int it = 0;
-
-    printf("Execute command with %d args: ", n_args);
-    do {
-        argv[it++] = start->arg;
-        printf("%s ", argv[it -1]);
+        commands_buffer[(*n_args)++] = start->arg;
         start = start->next;
     } while(start != command->args && start);
-    printf("\n");
 
-    // for (int i = 0; builtins_table[i].name != NULL; i++) {
-    //     if (strncmp(builtins_table[i].name, argv[0], strlen(argv[0])) == 0) {
-    //         return (*builtins_table[i].fun)(argv);
-    //     }
-    // }
+    commands_buffer[*n_args] = NULL;
 
+    return commands_buffer;
+}
+
+int ExecuteCommandInFork(char** argv, int n_args) {
+	if (n_args == 0) return OK_STATUS;
 
     int id = execvp(argv[0], argv);
 
-
-    printf("%d\n", id);
-    free(argv);
     if (id == -1) {
         switch (errno) {
             case ENOENT:
@@ -47,62 +30,112 @@ int ExecuteCommandInFork(command* command) {
             case EACCES:
                 return EACCES;
             default:
-                printf("%d\n", errno);
+                return errno;
         }
-    } else {
-        return OK_STATUS;
-    }
+    } 
+
+    return OK_STATUS;
 }       
 
-int ExecuteFork(command* command) {
+int ExecuteBuiltinCommand(char** argv, int n_args) {
+    if (n_args == 0) {
+        return EXIT_FAILURE;
+    }
+    for (int i = 0; builtins_table[i].name != NULL; i++) {
+        if (strncmp(builtins_table[i].name, argv[0], MIN(strlen(argv[0]), strlen(builtins_table[i].name))) == 0) {
+            return (*builtins_table[i].fun)(argv);
+        }
+    }
+    return EXIT_FAILURE;
+}
+
+int ExecuteCommand(command* command) {
+    if (command == NULL) {
+        return OK_STATUS;
+    }
+
+    int n_args = 0;
+
+    char** argv = GetArgvFromCommmand(command, &n_args);
+
+    if (n_args == 0) {
+        return OK_STATUS;
+    }
+
+    int status_builtin_execution = ExecuteBuiltinCommand(argv, n_args);
+    
+
+    switch (status_builtin_execution) {
+        case BUILTIN_ERROR:
+            fprintf(stderr, "Builtin %s error.\n", command->args->arg);
+            return OK_STATUS;
+            break;
+        case EXIT_SUCCESS:
+            return OK_STATUS;
+            break;
+    };
+
+
     pid_t pid, wpid;
     int status;
-
+    
     pid = fork();
+
     if (pid == 0) {
         // Child process
-        switch (ExecuteCommandInFork(command)) {
+        int respond = ExecuteCommandInFork(argv, n_args);
+        switch (respond) {
             case ENOENT:
-                perror(command->args->arg);
-                break;
-            case EACCES:
-                printf("WTF");
-                perror(command->args->arg);
-                break;
-            case ALLOC_FAILED:
-                perror("lsh: Error during allocation");
+                fprintf(stderr, "%s: no such file or directory\n", command->args->arg);
                 exit(EXIT_FAILURE);
                 break;
+            case EACCES:
+                fprintf(stderr, "%s: permission denied\n", command->args->arg);
+                exit(EXIT_FAILURE);
+                break;
+            case OK_STATUS:
+                break;
+            default:
+                fprintf(stderr, "%s: exec error\n", command->args->arg);
+                exit(EXIT_FAILURE);
         }
-        printf("no error %d\n", errno);
+        exit(EXIT_SUCCESS);
     } else if (pid < 0) {
         // Error forking
-        perror(command->args->arg);
-        perror(": exec error\n");
-    } else {
+        fprintf(stderr, "%s: exec error\n", command->args->arg);
+        exit(EXIT_FAILURE); // Terminate the child process
+    } else  {
         // Parent process
-        do {
-            wpid = waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        wpid = wait(&status);
+        if (wpid == -1) {
+            exit(EXIT_FAILURE);
+        }
     }
 
     return OK_STATUS;
 }
 
 int ExecuteCommands(commandseq* commands) {
+    if (commands == NULL) {
+        return OK_STATUS;
+    }
+
     commandseq* start = commands;
     do {
-        int status = ExecuteFork(commands->com);
+        int status = ExecuteCommand(commands->com);
         if (status != OK_STATUS) {
             return status;
         }
         commands = commands->next;
-        printf("Next command\n");
     } while(commands != start);
     return OK_STATUS;
 }
 
 int Execute(pipelineseq* seq) {
+    if (seq == NULL) {
+        return OK_STATUS;
+    }
+
     pipelineseq* start = seq;
     do {
         int status = ExecuteCommands(seq->pipeline->commands);

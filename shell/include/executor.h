@@ -8,8 +8,15 @@
 #include "./builtins.h"
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <sys/wait.h>
+#include "utils.h"
 
-int ExecuteCommandInFork(command* command);
+char** GetArgvFromCommmand(command* command, int* n_args);
+
+int ExecuteBuiltinCommand(char** argv, int n_args);
+
+int ExecuteCommandInFork(char** argv, int n_args);
 
 int ExecuteCommand(command* command);
 

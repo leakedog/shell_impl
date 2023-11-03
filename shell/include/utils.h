@@ -3,6 +3,8 @@
 
 #include "siparse.h"
 
+#define MIN(a, b) ((a < b) ? (a) : (b))
+
 void my_strlen(const char*, size_t*);
 void printcommand(command *, int);
 void printpipeline(pipeline, int);

@@ -5,8 +5,16 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include "executor.h"
+#include "utils.h"
+#include "siparse.h"
+
+void ProceedTerminalLine(enum ReaderError* status);
 
 char* ReadLine();
 
+void ProceedFileLines(enum ReaderError* error);
 
 #endif  // READER_H

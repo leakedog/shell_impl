@@ -1,4 +1,6 @@
 #include "../include/shell.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 bool CheckIsSpecialDevice() {
   struct stat file_stat;
@@ -12,6 +14,42 @@ bool CheckIsSpecialDevice() {
   return false;
 }
 
+void RunTerminalShell() {
+  enum ReaderError status = PROCEED_LINE;
+  while(true) {
+
+    write(STDOUT_FILENO, PROMPT_STR, strlen(PROMPT_STR));
+    
+    ProceedTerminalLine(&status);
+
+    if (status == ABORT_OK) {
+      write(STDOUT_FILENO, "\n", 1);
+      exit(0);
+    }
+
+    if (status == ABORT_FAILURE) {
+      fprintf(stderr, "lsh: Error reading from stdin\n");    
+      exit(EXIT_FAILURE);
+    }
+}
+
+  }
+void RunFileShell() {
+  enum ReaderError status = PROCEED_LINE;
+  while(true) {
+    ProceedFileLines(&status);
+    if (status == ABORT_OK) {
+      exit(EXIT_SUCCESS);
+    }
+
+    if (status == ABORT_FAILURE) {
+      fprintf(stderr, "lsh: Error reading from stdin\n");  
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+
 void RunShell() {
   char *line;
   pipelineseq* seq;
@@ -19,15 +57,9 @@ void RunShell() {
 
   bool is_special_device = CheckIsSpecialDevice();
 
-  do {
-
-    if (is_special_device) {
-      write(STDOUT_FILENO, PROMPT_STR, strlen(PROMPT_STR));
-    }
-
-    line = ReadLine();
-    seq = parseline(line);
-    status = Execute(seq);
-  } while (!status);
-
+  if (is_special_device) {
+    RunTerminalShell();
+  } else {
+    RunFileShell();
+  }
 }

@@ -1,7 +1,14 @@
 #ifndef _BUILTINS_H_
 #define _BUILTINS_H_
 
-#define BUILTIN_ERROR 2
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <signal.h>
+#include <dirent.h>
+
+#define BUILTIN_ERROR 121
 
 typedef struct {
 	char* name;
