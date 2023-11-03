@@ -7,7 +7,7 @@
 
 void my_strlen(const char*, size_t*);
 void printcommand(command *, int);
-void printpipeline(pipeline, int);
+void printpipeline(pipeline *, int);
 void printparsedline(pipelineseq *);
 
 command * pickfirstcommand(pipelineseq *);
