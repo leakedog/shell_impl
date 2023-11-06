@@ -13,3 +13,4 @@ void printparsedline(pipelineseq *);
 command * pickfirstcommand(pipelineseq *);
 
 #endif /* !_UTILS_H_ */
+    
