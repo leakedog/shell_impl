@@ -58,7 +58,7 @@ int lkill(char * argv[]) {
 	if (argv[2] == NULL) {
 		long process_id = strtol(argv[1], &er, 10);	
 
-		if (strlen(er) != 0) {
+		if (strlen(er) != 0 || errno == ERANGE) {
 			return BUILTIN_ERROR;
 		}
 
@@ -75,13 +75,13 @@ int lkill(char * argv[]) {
 
 	long process_id = strtol(argv[2], &er, 10);	
 
-	if (strlen(er) != 0) {
+	if (strlen(er) != 0 || errno == ERANGE) {
 		return BUILTIN_ERROR;
 	}
 
 	int signal = strtol(argv[1] + 1, &er, 10);
 
-	if (strlen(er) != 0) {
+	if (strlen(er) != 0 || errno == ERANGE) {
 		return BUILTIN_ERROR;
 	} 
 
