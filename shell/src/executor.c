@@ -49,10 +49,15 @@ int ExecuteBuiltinCommand(char** argv, int n_args) {
     return EXIT_FAILURE;
 }
 
-int ExecuteCommand(command* command) {
+int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]) {
     if (command == NULL) {
         return OK_STATUS;
     }
+    
+    // if (NOT_LAST_CMD(pos)) {
+    //     pipe(fd);
+    //     printf("running pipe %d %d\n", fd[0], fd[1]);
+    // }
 
     int n_args = 0;
 
@@ -62,17 +67,35 @@ int ExecuteCommand(command* command) {
         return OK_STATUS;
     }
 
+    int rin_file = -1, rout_file = -1;
+    int original_stdin = -1;
+    int original_stdout = -1;
+    if (RunRedirs(command, &rin_file, &rout_file) == REDIR_ERROR) {
+        close(rin_file);
+        close(rout_file);
+        return EXIT_FAILURE;
+    } else {
+        if (rin_file != -1) {
+            original_stdin = dup(fileno(stdin));
+            dup2(rin_file , fileno(stdin));
+        }
+        if (rout_file != -1) {
+            original_stdout = dup(fileno(stdout));
+            dup2(rout_file, fileno(stdout));
+        }
+    }
+
     int status_builtin_execution = ExecuteBuiltinCommand(argv, n_args);
     
 
     switch (status_builtin_execution) {
         case BUILTIN_ERROR:
             fprintf(stderr, "Builtin %s error.\n", command->args->arg);
+            FinishRedirs(rin_file, rout_file, original_stdin, original_stdout);
             return OK_STATUS;
-            break;
         case EXIT_SUCCESS:
+            FinishRedirs(rin_file, rout_file, original_stdin, original_stdout);
             return OK_STATUS;
-            break;
     };
 
 
@@ -81,25 +104,41 @@ int ExecuteCommand(command* command) {
     
     pid = fork();
 
+    bool was_case = true;
     if (pid == 0) {
+        // if (NOT_LAST_CMD(pos) && original_stdout == -1) {
+        //     was_case = true;
+        //     original_stdout = dup(fileno(stdout));
+        //     dup2(fd[1], fileno(stdout));
+        //     close(fd[0]);
+        //     rout_file = fd[1];
+        // }
+        // if (NOT_FIRST_CMD(pos) && original_stdin == -1) {
+        //     printf("stdin is changed with %d\n", prevfd[0]);
+        //     original_stdin = dup(fileno(stdin));
+        //     dup2(prevfd[0], fileno(stdin));
+        //     close(prevfd[1]);
+        //     rin_file = prevfd[0];
+        // }
         // Child process
         int respond = ExecuteCommandInFork(argv, n_args);
+        int exit_status = OK_STATUS;
         switch (respond) {
             case ENOENT:
                 fprintf(stderr, "%s: no such file or directory\n", command->args->arg);
-                exit(EXIT_FAILURE);
+                exit_status = EXIT_FAILURE;
                 break;
             case EACCES:
                 fprintf(stderr, "%s: permission denied\n", command->args->arg);
-                exit(EXIT_FAILURE);
+                exit_status = EXIT_FAILURE;
                 break;
             case OK_STATUS:
                 break;
             default:
                 fprintf(stderr, "%s: exec error\n", command->args->arg);
-                exit(EXIT_FAILURE);
+                exit_status = EXIT_FAILURE;
         }
-        exit(EXIT_SUCCESS);
+        exit(exit_status);
     } else if (pid < 0) {
         // Error forking
         fprintf(stderr, "%s: exec error\n", command->args->arg);
@@ -112,6 +151,17 @@ int ExecuteCommand(command* command) {
         }
     }
 
+    // if (prevfd[0] > 2) {
+    //     close(prevfd[0]);
+    // }
+    // if (prevfd[1] > 2) {
+    //     close(prevfd[1]);
+    // }
+    // if (was_case) {
+    //     rout_file = -1;
+    // }
+    FinishRedirs(rin_file, rout_file, original_stdin, original_stdout);
+    
     return OK_STATUS;
 }
 
@@ -120,13 +170,23 @@ int ExecuteCommands(commandseq* commands) {
         return OK_STATUS;
     }
 
+    int fd[2], prevfd[2];
+    fd[0] = fd[1] = prevfd[0] = prevfd[1] = 0;
     commandseq* start = commands;
     do {
-        int status = ExecuteCommand(commands->com);
+        int pos = (FIRST_CMD) * (start == commands) + (LAST_CMD) * (commands->next == start);
+        int status = ExecuteCommand(commands->com, pos, fd, prevfd);
         if (status != OK_STATUS) {
             return status;
         }
         commands = commands->next;
+        printf("fd %d %d\n", fd[0], fd[1]);
+        prevfd[0] = fd[0];
+        prevfd[1] = fd[1];
+        if (prevfd[0] > 2) {
+            close(prevfd[0]);
+        }
+        printf("prevfd %d %d\n", prevfd[0], prevfd[1]);
     } while(commands != start);
     return OK_STATUS;
 }
@@ -135,7 +195,6 @@ int Execute(pipelineseq* seq) {
     if (seq == NULL) {
         return OK_STATUS;
     }
-
     pipelineseq* start = seq;
     do {
         int status = ExecuteCommands(seq->pipeline->commands);

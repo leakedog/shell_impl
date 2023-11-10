@@ -21,6 +21,8 @@
 
 #define OK_STATUS 0 
 
+#define REDIR_ERROR 130
+
 // reader error
 enum ReaderError {
     ABORT_OK = 0,
