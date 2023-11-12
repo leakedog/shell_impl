@@ -16,13 +16,13 @@ int RunRedirs(command* command, int* rin_file, int* rout_file) {
 
             if(IS_RAPPEND(cur_redir->flags) || IS_ROUT(cur_redir->flags)){
                 if(!IS_RAPPEND(cur_redir->flags)) {
-                    *rout_file = open(cur_redir->filename,  O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+                    *rout_file = open(cur_redir->filename,  O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, S_IRUSR | S_IWUSR);
                     if (*rout_file == -1) {
                         was_error = true;
                     }
                 }
                 else{
-                    *rout_file = open(cur_redir->filename,  O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+                    *rout_file = open(cur_redir->filename,  O_WRONLY | O_APPEND | O_CREAT | O_SYNC, S_IRUSR | S_IWUSR);
                     if (*rout_file == -1) {
                         was_error = true;
                     }
@@ -51,7 +51,6 @@ int RunRedirs(command* command, int* rin_file, int* rout_file) {
 
 void FinishRedirs(int rin_file, int rout_file, int original_stdin, int original_stdout) {
     fflush(stdout);
-    printf("closing %d %d\n", rin_file, rout_file);
     close(rout_file);
     close(rin_file);
     if (rin_file != -1) {

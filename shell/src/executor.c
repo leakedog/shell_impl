@@ -1,4 +1,5 @@
 #include "../include/executor.h"
+#include <stdlib.h>
 
 
 char* commands_buffer[MAX_COMMAND_CNT];
@@ -37,6 +38,8 @@ int ExecuteCommandInFork(char** argv, int n_args) {
     return OK_STATUS;
 }       
 
+
+
 int ExecuteBuiltinCommand(char** argv, int n_args) {
     if (n_args == 0) {
         return EXIT_FAILURE;
@@ -54,11 +57,13 @@ int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]) {
         return OK_STATUS;
     }
     
-    // if (NOT_LAST_CMD(pos)) {
-    //     pipe(fd);
-    //     printf("running pipe %d %d\n", fd[0], fd[1]);
-    // }
-
+    if (NOT_LAST_CMD(pos)) {
+        if (pipe(fd) == -1) {
+            fprintf(stderr, "lsh: Error creating pipe\n");    
+            exit(EXIT_FAILURE);
+        }
+    }
+    
     int n_args = 0;
 
     char** argv = GetArgvFromCommmand(command, &n_args);
@@ -77,7 +82,7 @@ int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]) {
     } else {
         if (rin_file != -1) {
             original_stdin = dup(fileno(stdin));
-            dup2(rin_file , fileno(stdin));
+            dup2(rin_file, fileno(stdin));
         }
         if (rout_file != -1) {
             original_stdout = dup(fileno(stdout));
@@ -102,24 +107,28 @@ int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]) {
     pid_t pid, wpid;
     int status;
     
-    pid = fork();
 
-    bool was_case = true;
+
+    pid = fork();
     if (pid == 0) {
-        // if (NOT_LAST_CMD(pos) && original_stdout == -1) {
-        //     was_case = true;
-        //     original_stdout = dup(fileno(stdout));
-        //     dup2(fd[1], fileno(stdout));
-        //     close(fd[0]);
-        //     rout_file = fd[1];
-        // }
-        // if (NOT_FIRST_CMD(pos) && original_stdin == -1) {
-        //     printf("stdin is changed with %d\n", prevfd[0]);
-        //     original_stdin = dup(fileno(stdin));
-        //     dup2(prevfd[0], fileno(stdin));
-        //     close(prevfd[1]);
-        //     rin_file = prevfd[0];
-        // }
+        if (NOT_LAST_CMD(pos)) {
+            close(fd[0]); /// Child won't read
+        }
+        if (NOT_FIRST_CMD(pos) && original_stdin == -1) {
+            rin_file = prevfd[0];
+            dup2(rin_file, fileno(stdin));
+        } else if (NOT_FIRST_CMD(pos)) {
+            close(prevfd[0]);
+            close(original_stdin);
+        }
+        if (NOT_LAST_CMD(pos) && original_stdout == -1) {
+            rout_file = fd[1];
+            dup2(rout_file, fileno(stdout)); 
+        } else if (NOT_LAST_CMD(pos)){
+            close(fd[1]);
+            close(original_stdout);   
+        }
+
         // Child process
         int respond = ExecuteCommandInFork(argv, n_args);
         int exit_status = OK_STATUS;
@@ -146,23 +155,24 @@ int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]) {
     } else  {
         // Parent process
         wpid = wait(&status);
+        if (NOT_LAST_CMD(pos)) {
+            close(fd[1]);
+        }
+        if (NOT_FIRST_CMD(pos)) {
+            close(prevfd[0]);
+        }
         if (wpid == -1) {
             exit(EXIT_FAILURE);
         }
+       
     }
 
-    // if (prevfd[0] > 2) {
-    //     close(prevfd[0]);
-    // }
-    // if (prevfd[1] > 2) {
-    //     close(prevfd[1]);
-    // }
-    // if (was_case) {
-    //     rout_file = -1;
-    // }
+
     FinishRedirs(rin_file, rout_file, original_stdin, original_stdout);
     
-    return OK_STATUS;
+   
+
+    return OK_STATUS;   
 }
 
 int ExecuteCommands(commandseq* commands) {
@@ -173,6 +183,7 @@ int ExecuteCommands(commandseq* commands) {
     int fd[2], prevfd[2];
     fd[0] = fd[1] = prevfd[0] = prevfd[1] = 0;
     commandseq* start = commands;
+    int cnt_elems =0 ;
     do {
         int pos = (FIRST_CMD) * (start == commands) + (LAST_CMD) * (commands->next == start);
         int status = ExecuteCommand(commands->com, pos, fd, prevfd);
@@ -180,14 +191,10 @@ int ExecuteCommands(commandseq* commands) {
             return status;
         }
         commands = commands->next;
-        printf("fd %d %d\n", fd[0], fd[1]);
         prevfd[0] = fd[0];
         prevfd[1] = fd[1];
-        if (prevfd[0] > 2) {
-            close(prevfd[0]);
-        }
-        printf("prevfd %d %d\n", prevfd[0], prevfd[1]);
     } while(commands != start);
+    
     return OK_STATUS;
 }
 
