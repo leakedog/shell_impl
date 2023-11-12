@@ -39,42 +39,21 @@ int ExecuteCommandInFork(char** argv, int n_args) {
 }       
 
 
-
-int ExecuteBuiltinCommand(char** argv, int n_args) {
+int GetIdBuiltinCommand(char** argv, int n_args) {
     if (n_args == 0) {
-        return EXIT_FAILURE;
+        return -1;
     }
     for (int i = 0; builtins_table[i].name != NULL; i++) {
         if (strncmp(builtins_table[i].name, argv[0], MIN(strlen(argv[0]), strlen(builtins_table[i].name))) == 0) {
-            return (*builtins_table[i].fun)(argv);
+            return i;
         }
     }
-    return EXIT_FAILURE;
+    return -1;
 }
 
-int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]) {
-    if (command == NULL) {
-        return OK_STATUS;
-    }
-    
-    if (NOT_LAST_CMD(pos)) {
-        if (pipe(fd) == -1) {
-            fprintf(stderr, "lsh: Error creating pipe\n");    
-            exit(EXIT_FAILURE);
-        }
-    }
-    
-    int n_args = 0;
-
-    char** argv = GetArgvFromCommmand(command, &n_args);
-
-    if (n_args == 0) {
-        return OK_STATUS;
-    }
-
+int ExecuteCommandBuiltin(command* command, char** argv, int n_args, int fd[2], int prevfd[2]) {
+    int original_stdin = -1, original_stdout = -1;
     int rin_file = -1, rout_file = -1;
-    int original_stdin = -1;
-    int original_stdout = -1;
     if (RunRedirs(command, &rin_file, &rout_file) == REDIR_ERROR) {
         close(rin_file);
         close(rout_file);
@@ -89,44 +68,56 @@ int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]) {
             dup2(rout_file, fileno(stdout));
         }
     }
+    int builtin_command_id = GetIdBuiltinCommand(argv, n_args);    
+    int result = (*builtins_table[builtin_command_id].fun)(argv);
+    if (result == BUILTIN_ERROR) {
+        fprintf(stderr, "Builtin %s error.\n", command->args->arg);
+    }
+    FinishRedirs(rin_file, rout_file, original_stdin, original_stdout);
+    return OK_STATUS;
+}
 
-    int status_builtin_execution = ExecuteBuiltinCommand(argv, n_args);
-    
-
-    switch (status_builtin_execution) {
-        case BUILTIN_ERROR:
-            fprintf(stderr, "Builtin %s error.\n", command->args->arg);
-            FinishRedirs(rin_file, rout_file, original_stdin, original_stdout);
-            return OK_STATUS;
-        case EXIT_SUCCESS:
-            FinishRedirs(rin_file, rout_file, original_stdin, original_stdout);
-            return OK_STATUS;
-    };
-
-
+int ExecuteCommandForked(command* command, char** argv, int n_args, int command_pos_mask, int fd[2], int prevfd[2]) {
+    if (NOT_LAST_CMD(command_pos_mask)) {
+        if (pipe(fd) == -1) {
+            fprintf(stderr, "lsh: Error creating pipe\n");    
+            exit(EXIT_FAILURE);
+        }
+    }
     pid_t pid, wpid;
     int status;
-    
-
-
     pid = fork();
+    int rin_file = -1, rout_file = -1;
+
     if (pid == 0) {
-        if (NOT_LAST_CMD(pos)) {
-            close(fd[0]); /// Child won't read
-        }
-        if (NOT_FIRST_CMD(pos) && original_stdin == -1) {
-            rin_file = prevfd[0];
+        if (RunRedirs(command, &rin_file, &rout_file) == REDIR_ERROR) {
+            close(rin_file);
+            close(rout_file);
+            exit(EXIT_FAILURE);
+        } 
+        if (rin_file != -1) {
             dup2(rin_file, fileno(stdin));
-        } else if (NOT_FIRST_CMD(pos)) {
-            close(prevfd[0]);
-            close(original_stdin);
+            close(rin_file);
         }
-        if (NOT_LAST_CMD(pos) && original_stdout == -1) {
-            rout_file = fd[1];
-            dup2(rout_file, fileno(stdout)); 
-        } else if (NOT_LAST_CMD(pos)){
+        if (rout_file != -1) {
+            dup2(rout_file, fileno(stdout));
+            close(rout_file);
+        }
+        /// Now let's do some things with pipes and fds
+        if (NOT_LAST_CMD(command_pos_mask)) {
+            close(fd[0]); /// Child won't read from pipe
+        }
+        if (NOT_FIRST_CMD(command_pos_mask) && rin_file == -1) {
+            dup2(prevfd[0], fileno(stdin));
+            close(prevfd[0]);
+        } else if (NOT_FIRST_CMD(command_pos_mask)) {
+            close(prevfd[0]);
+        }
+        if (NOT_LAST_CMD(command_pos_mask) && rout_file == -1) {
+            dup2(fd[1], fileno(stdout)); 
             close(fd[1]);
-            close(original_stdout);   
+        } else if (NOT_LAST_CMD(command_pos_mask)){
+            close(fd[1]);
         }
 
         // Child process
@@ -147,6 +138,11 @@ int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]) {
                 fprintf(stderr, "%s: exec error\n", command->args->arg);
                 exit_status = EXIT_FAILURE;
         }
+        fflush(stdout);   
+        /// close files     
+        close(rin_file);close(rout_file);
+        /// close pipes
+        close(prevfd[0]); close(fd[1]);
         exit(exit_status);
     } else if (pid < 0) {
         // Error forking
@@ -155,24 +151,38 @@ int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]) {
     } else  {
         // Parent process
         wpid = wait(&status);
-        if (NOT_LAST_CMD(pos)) {
+        if (NOT_LAST_CMD(command_pos_mask)) {
             close(fd[1]);
         }
-        if (NOT_FIRST_CMD(pos)) {
+        if (NOT_FIRST_CMD(command_pos_mask)) {
             close(prevfd[0]);
         }
         if (wpid == -1) {
             exit(EXIT_FAILURE);
         }
-       
+    }
+    return OK_STATUS;
+}
+
+int ExecuteCommand(command* command, int command_pos_mask, int fd[2], int prevfd[2]) {
+    if (command == NULL) {
+        return OK_STATUS;
+    }
+    
+    
+    int n_args = 0;
+
+    char** argv = GetArgvFromCommmand(command, &n_args);
+
+    if (n_args == 0) {
+        return OK_STATUS;
     }
 
-
-    FinishRedirs(rin_file, rout_file, original_stdin, original_stdout);
+    if (GetIdBuiltinCommand(argv, n_args) != -1) {
+        return ExecuteCommandBuiltin(command, argv, n_args, fd, prevfd);
+    }
     
-   
-
-    return OK_STATUS;   
+    return ExecuteCommandForked(command, argv, n_args, command_pos_mask, fd, prevfd);
 }
 
 int ExecuteCommands(commandseq* commands) {
@@ -185,8 +195,8 @@ int ExecuteCommands(commandseq* commands) {
     commandseq* start = commands;
     int cnt_elems =0 ;
     do {
-        int pos = (FIRST_CMD) * (start == commands) + (LAST_CMD) * (commands->next == start);
-        int status = ExecuteCommand(commands->com, pos, fd, prevfd);
+        int command_pos_mask = (FIRST_CMD) * (start == commands) + (LAST_CMD) * (commands->next == start);
+        int status = ExecuteCommand(commands->com, command_pos_mask, fd, prevfd);
         if (status != OK_STATUS) {
             return status;
         }
