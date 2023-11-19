@@ -23,6 +23,10 @@
 
 #define REDIR_ERROR 130
 
+#define MAX_NUMBER_OF_FOREGROUND_CHILDREN 100
+#define MAX_NUMBER_OF_BACKGROUND_CHILDREN (1 << 16)
+
+
 // reader error
 enum ReaderError {
     ABORT_OK = 0,

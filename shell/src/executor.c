@@ -1,5 +1,4 @@
 #include "../include/executor.h"
-#include <stdlib.h>
 
 
 char* commands_buffer[MAX_COMMAND_CNT];
@@ -77,7 +76,7 @@ int ExecuteCommandBuiltin(command* command, char** argv, int n_args, int fd[2], 
     return OK_STATUS;
 }
 
-int ExecuteCommandForked(command* command, char** argv, int n_args, int command_pos_mask, int fd[2], int prevfd[2]) {
+int ExecuteCommandForked(command* command, char** argv, int n_args, int command_pos_mask, int child_id, int fd[2], int prevfd[2], bool is_background) {
     if (NOT_LAST_CMD(command_pos_mask)) {
         if (pipe(fd) == -1) {
             fprintf(stderr, "lsh: Error creating pipe\n");    
@@ -88,13 +87,19 @@ int ExecuteCommandForked(command* command, char** argv, int n_args, int command_
     int status;
     pid = fork();
     int rin_file = -1, rout_file = -1;
-
     if (pid == 0) {
+        SetDefaultHandler();
         if (RunRedirs(command, &rin_file, &rout_file) == REDIR_ERROR) {
+            if (!is_background) {
+                DecreaseActiveForeignChildren();
+            }
             close(rin_file);
             close(rout_file);
             exit(EXIT_FAILURE);
         } 
+        if (is_background) {
+            RunAsBackground();
+        }
         if (rin_file != -1) {
             dup2(rin_file, fileno(stdin));
             close(rin_file);
@@ -147,24 +152,24 @@ int ExecuteCommandForked(command* command, char** argv, int n_args, int command_
     } else if (pid < 0) {
         // Error forking
         fprintf(stderr, "%s: exec error\n", command->args->arg);
-        exit(EXIT_FAILURE); // Terminate the child process
-    } else  {
+        exit(EXIT_FAILURE);
+    } else {
+        if (!is_background) {
+            SetForegroundChildPid(child_id, pid);
+        }
         // Parent process
-        wpid = wait(&status);
         if (NOT_LAST_CMD(command_pos_mask)) {
             close(fd[1]);
         }
         if (NOT_FIRST_CMD(command_pos_mask)) {
             close(prevfd[0]);
         }
-        if (wpid == -1) {
-            exit(EXIT_FAILURE);
-        }
     }
+
     return OK_STATUS;
 }
 
-int ExecuteCommand(command* command, int command_pos_mask, int fd[2], int prevfd[2]) {
+int ExecuteCommand(command* command, int command_pos_mask, int child_id, int fd[2], int prevfd[2], bool is_background) {
     if (command == NULL) {
         return OK_STATUS;
     }
@@ -182,21 +187,48 @@ int ExecuteCommand(command* command, int command_pos_mask, int fd[2], int prevfd
         return ExecuteCommandBuiltin(command, argv, n_args, fd, prevfd);
     }
     
-    return ExecuteCommandForked(command, argv, n_args, command_pos_mask, fd, prevfd);
+    return ExecuteCommandForked(command, argv, n_args, command_pos_mask, child_id, fd, prevfd, is_background);
 }
 
-int ExecuteCommands(commandseq* commands) {
+bool CheckEmptyInPipeline(commandseq* commands, int* n_commands) {
+    commandseq* start = commands;
+    bool was_null = false;
+    do {
+        if (commands->com != NULL) {
+            (*n_commands)++;
+        }
+        was_null = (commands->com == NULL);
+        commands = commands->next;
+    } while(commands != start);
+    return was_null && *n_commands > 1;
+}
+
+int ExecuteCommands(commandseq* commands, bool is_background) {
+    WaitForegroundChildren();
     if (commands == NULL) {
         return OK_STATUS;
+    }
+    
+    int n_commands = 0;
+    /// Check and compute n_commands
+    if (CheckEmptyInPipeline(commands, &n_commands)) {
+        fprintf(stderr, SYNTAX_ERROR_STR);
+        return OK_STATUS;
+    }
+
+    if (!is_background) {
+        SetForegroundChildren(n_commands);
+    } else {
+        ClearForegroundChildren();
     }
 
     int fd[2], prevfd[2];
     fd[0] = fd[1] = prevfd[0] = prevfd[1] = 0;
     commandseq* start = commands;
-    int cnt_elems =0 ;
+    int child_id = 0;
     do {
         int command_pos_mask = (FIRST_CMD) * (start == commands) + (LAST_CMD) * (commands->next == start);
-        int status = ExecuteCommand(commands->com, command_pos_mask, fd, prevfd);
+        int status = ExecuteCommand(commands->com, command_pos_mask, child_id++, fd, prevfd, is_background);
         if (status != OK_STATUS) {
             return status;
         }
@@ -205,6 +237,8 @@ int ExecuteCommands(commandseq* commands) {
         prevfd[1] = fd[1];
     } while(commands != start);
     
+    WaitForegroundChildren();
+
     return OK_STATUS;
 }
 
@@ -214,7 +248,7 @@ int Execute(pipelineseq* seq) {
     }
     pipelineseq* start = seq;
     do {
-        int status = ExecuteCommands(seq->pipeline->commands);
+        int status = ExecuteCommands(seq->pipeline->commands, seq->pipeline->flags == INBACKGROUND);
         seq = seq->next;
     } while(start != seq);
 

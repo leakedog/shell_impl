@@ -10,9 +10,9 @@ int prefix_filled = 0;
 
 void ProceedTerminalLine(enum ReaderError* error) {
     *error = PROCEED_LINE;
-
+    SetDefaultBlock();
     ssize_t bytes_read = read(STDIN_FILENO, buffer, BUFFER_SIZE);
-
+    SetChildBlock();
     if (bytes_read == -1) {
         *error = ABORT_FAILURE;
         return;
@@ -42,7 +42,9 @@ void ProceedFileLines(enum ReaderError* error) {
     /// lets read until full 
     do {
         char* point_to_read = buffer + prefix_filled;
+        SetDefaultBlock();
         bytes_read = read(0, point_to_read, (BUFFER_SIZE - prefix_filled));
+        SetChildBlock();
         if (bytes_read == -1) {
             *error = ABORT_FAILURE;
             return;
@@ -96,3 +98,4 @@ void ProceedFileLines(enum ReaderError* error) {
         }
     } while(line_finishing_position != NULL && prefix_filled != 0);
 }
+    

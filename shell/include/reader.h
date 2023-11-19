@@ -10,6 +10,7 @@
 #include "executor.h"
 #include "utils.h"
 #include "siparse.h"
+#include "signal_handler.h"
 
 void ProceedTerminalLine(enum ReaderError* status);
 

@@ -17,7 +17,7 @@ bool CheckIsSpecialDevice() {
 void RunTerminalShell() {
   enum ReaderError status = PROCEED_LINE;
   while(true) {
-
+    PrintAllFinishedSignals();
     write(STDOUT_FILENO, PROMPT_STR, strlen(PROMPT_STR));
     
     ProceedTerminalLine(&status);
@@ -54,7 +54,7 @@ void RunShell() {
   char *line;
   pipelineseq* seq;
   int status;
-
+  InitializeSignals();
   bool is_special_device = CheckIsSpecialDevice();
 
   if (is_special_device) {

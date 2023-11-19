@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include "utils.h"
 #include "redir_maker.h"
-
+#include "signal_handler.h"
 
 #define FIRST_CMD (1 << 0)
 #define LAST_CMD (1 << 1)
@@ -21,18 +21,20 @@
 
 char** GetArgvFromCommmand(command* command, int* n_args);
 
-int ExecuteBuiltinCommand(char** argv, int n_args);
+int GetIdBuiltinCommand(char** argv, int n_args);
 
-int ExecuteCommandInFork(char** argv, int n_args);
+int ExecuteCommandBuiltin(command* command, char** argv, int n_args, int fd[2], int prevfd[2]);
 
-int ExecuteCommand(command* command, int pos, int fd[2], int prevfd[2]);
+int ExecuteCommandForked(command* command, char** argv, int n_args, int command_pos_mask, int child_id, int fd[2], int prevfd[2], bool is_background);
+
+int ExecuteCommand(command* command, int pos, int child_id, int fd[2], int prevfd[2], bool is_background);
 
 /*
     Execute sequence of commands. Each command will be executed, if one of the command wasn't executed successfully,
     executing will be finished.
 */
 
-int ExecuteCommands(commandseq* commands);
+int ExecuteCommands(commandseq* commands, bool is_background);
 
 
 /*
