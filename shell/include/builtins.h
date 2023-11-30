@@ -8,6 +8,10 @@
 #include <signal.h>
 #include <dirent.h>
 #include <errno.h>
+#include "config.h"
+#include <limits.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #define BUILTIN_ERROR 121
 

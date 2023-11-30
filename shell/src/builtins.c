@@ -1,6 +1,6 @@
 #include "../include/builtins.h"
-#include <stdio.h>
-#include <unistd.h>
+#include <limits.h>
+
 
 int echo(char*[]);
 int lexit(char *[]);
@@ -50,6 +50,7 @@ int lexit(char * argv[]) {
 
 
 int lkill(char * argv[]) {
+	errno = OK_STATUS;
     if(argv[1] == NULL){
         return BUILTIN_ERROR;
     }
@@ -79,9 +80,9 @@ int lkill(char * argv[]) {
 		return BUILTIN_ERROR;
 	}
 
-	int signal = strtol(argv[1] + 1, &er, 10);
+	long signal = strtol(argv[1] + 1, &er, 10);
 
-	if (strlen(er) != 0 || errno == ERANGE) {
+	if (strlen(er) != 0 || errno == ERANGE || signal > INT_MAX || signal < INT_MIN) {
 		return BUILTIN_ERROR;
 	} 
 

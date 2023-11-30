@@ -1,11 +1,11 @@
 #include "../include/signal_handler.h"
-#include <sys/wait.h>
+
 
 pid_t pids_of_foreground_children[MAX_NUMBER_OF_FOREGROUND_CHILDREN];
 pid_t pids_of_background_children[MAX_NUMBER_OF_BACKGROUND_CHILDREN];
 int status_background_children[MAX_NUMBER_OF_BACKGROUND_CHILDREN];
 int n_foreground_children = 0;
-int n_foreground_chilren_alive = 0;
+volatile int n_foreground_chilren_alive = 0;
 int n_finished_background_children = 0;
 sigset_t child_set, not_child_set, old_set;
 
@@ -47,7 +47,7 @@ void Handler(int sig) {
         if(child <= 0) break;
        
         if(IsForegroundChildren(child)){
-            n_foreground_chilren_alive--;;
+            n_foreground_chilren_alive--;
         }
         else{
             pids_of_background_children[n_finished_background_children] = child;
@@ -69,7 +69,6 @@ void RunAsBackground() {
 }
 
 void WaitForegroundChildren() {
-    
     while(n_foreground_chilren_alive){
         sigsuspend(&not_child_set);
     }
