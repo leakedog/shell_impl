@@ -70,7 +70,10 @@ void RunAsBackground() {
 
 void WaitForegroundChildren() {
     while(n_foreground_chilren_alive){
+        sigset_t orig_mask;
+        sigprocmask(SIG_BLOCK, &not_child_set, &orig_mask);
         sigsuspend(&not_child_set);
+        sigprocmask(SIG_SETMASK, &orig_mask, NULL);
     }
 }
 
