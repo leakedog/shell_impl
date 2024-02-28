@@ -1,5 +1,5 @@
 # Custom Shell Implementation
-Welcome to our custom shell! This shell is designed to provide a versatile command-line interface, supporting various features and functionalities. Below is an overview of what our shell can do:
+This shell is designed to provide a versatile command-line interface, supporting various features and functionalities. Below is an overview of what the shell can do:
 
 ## Features
 * `Command Execution`: The shell reads commands from both standard input and files, allowing users to interactively input commands or execute scripts.
