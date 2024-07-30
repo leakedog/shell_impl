@@ -1,17 +1,18 @@
-# SO-shell-etap2
-*Specyfikacja drugiego etapu projektu realizowanego w ramach ćwiczeń do przedmiotu Systemy Operacyjne.*
+# SO Shell - Phase 2
 
-## Implementacja shella - etap 2 (wejście z pliku).
+*Specification for the second phase of the project carried out as part of the Operating Systems course exercises.*
 
-Zmiany w stosunku do Etapu 1:
+## Shell Implementation - Phase 2 (File Input)
 
-1. Wypisujemy prompt na `STDOUT` tylko jeśli `STDIN` odpowiada specjalnemu urządzeniu znakowemu (`man fstat`).
-1. Wczytując linię z `STDIN` musimy się liczyć z tym że zostanie wczytanych wiele linii, oraz z tym że ostatnia z nich może nie być wczytana w całości. Należy uwzględnić przypadek, w którym w jednym odczycie zostanie wczytana tylko część linii.
-1. Wciąż wystarczy wykonywać tylko pierwszą z komend z każdej z wczytanych linii.
-1. Proszę pamiętać że ostania linia wejścia może się zakończyć końcem pliku a nie końcem linii.
+Changes from Phase 1:
 
-Skrypty oraz pierwszy zestaw testów znajdują się w katalogu `test`. Instrukcje uruchamiania testów są w pliku `test/README.md`.
+1. Print the prompt to `STDOUT` only if `STDIN` corresponds to a special character device (`man fstat`).
+2. When reading a line from `STDIN`, you must account for the possibility that multiple lines will be read, and the last line may not be read completely. You need to handle the case where only part of a line is read in a single read operation.
+3. You still need to execute only the first command from each of the read lines.
+4. Remember that the last line of input may end with EOF rather than a newline.
 
-Każdy test z pierwszego zestawu jest wywoływany w dwóch trybach:
-- w pierwszym, na wejście podawany jest od razu cały plik,
-- w drugim, wejście jest podawane programowi `splitter` i przekazywane przez pipe do shella. `splitter` przepisuje wejście na wyjście robiąc przerwy w pseudolosowych momentach.
+Scripts and the first set of tests are located in the `test` directory. Instructions for running the tests are in the `test/README.md` file.
+
+Each test from the first set is executed in two modes:
+- In the first mode, the entire file is provided as input all at once.
+- In the second mode, the input is given to the `splitter` program and piped to the shell. The `splitter` rewrites the input to the output, inserting pauses at pseudo-random moments.
