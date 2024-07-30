@@ -1,22 +1,23 @@
-# SO-shell-etap3
-*Specyfikacja trzeciego etapu projektu realizowanego w ramach ćwiczeń do przedmiotu Systemy Operacyjne.*
+# OS Shell - Phase 3
 
-## Implementacja shella - etap 3 (wbudowane polecenia shella).
+*Specification for the third phase of the project carried out as part of the Operating Systems course exercises.*
 
+## Shell Implementation - Phase 3 (Built-in Shell Commands)
 
-Zanim wykonamy polecenie jako program sprawdzamy czy nie jest to polecnie shella. Polecenia shella znajdują się w tabeli `builtins_table`  w pliku `builtins.c`. Wpis składa się z nazwy polecenia i wskaźnika do funkcji realizującej polecenie. Argumentem funkcji jest tablica argumentów analogiczna do `argv`. Należy zaimplementować następujące polecenia:
-- `exit` - kończy proces shella.
-- `lcd [path]` - zmienia bieżący katalog na wskazany. Jeśli polecenie jest wywołane bez argumentu katalog powinien być zmieniony na wartość zmiennej środowiskowej `HOME`.
-- `lkill [ -signal_number ] pid` - wysyła sygnał signal_number do procesu/grupy pid. Domyślny numer sygnału to `SIGTERM`.
-- `lls` - wypisje nazwy plików w bieżącym katalogu (analogicznie do `ls -1` bez żadnych opcji). Zawartość katalogu powinna być wypisana w kolejności zwracanej przez system. Nazwy zaczynające się od `.` powinny być ignorowane.
+Before executing a command as a program, check if it is a shell built-in command. Shell built-in commands are located in the `builtins_table` in the file `builtins.c`. Each entry consists of a command name and a pointer to the function that implements the command. The function argument is an array of arguments analogous to `argv`. You need to implement the following commands:
 
-W przypadku jakichkolwiek problemów z wykonaniem komendy (niewłaściwa liczba lub format argumentów, niepowodzenie syscalla itp.) należy wypisać na STDERR:
+- `exit` - Terminates the shell process.
+- `lcd [path]` - Changes the current directory to the specified path. If the command is invoked without an argument, the directory should be changed to the value of the `HOME` environment variable.
+- `lkill [ -signal_number ] pid` - Sends the signal `signal_number` to the process/group `pid`. The default signal number is `SIGTERM`.
+- `lls` - Lists the names of files in the current directory (similar to `ls -1` with no options). The directory contents should be printed in the order returned by the system. Names starting with `.` should be ignored.
+
+In case of any problems executing the command (e.g., incorrect number or format of arguments, syscall failure, etc.), print the following to STDERR:
 ```
-Builtin 'nazwa_komendy' error.
+Builtin 'command_name' error.
 ```
 
 
-Przykład sesji:
+Session example:
 ```
 sleep 10000 &
 sleep 10001 &
