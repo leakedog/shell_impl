@@ -1,4 +1,4 @@
-# SO Shell - Phase 2
+# OS Shell - Phase 2
 
 *Specification for the second phase of the project carried out as part of the Operating Systems course exercises.*
 
