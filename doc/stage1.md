@@ -1,47 +1,44 @@
-# SO shell - etap1
-*Specyfikacja pierwszego etapu projektu realizowanego w ramach ćwiczeń do przedmiotu Systemy Operacyjne.*
+# OS Shell - Phase 1
 
-## Implementacja shella - etap 1.
+*Specification for the first phase of the project carried out as part of the Operating Systems course exercises.*
 
-W pierwszym etapie dla każdej kolejnej linii na wejściu wystarczy wykonać tylko pierwszą z podanych komend. W etapie 1 zakładamy że wejście jest z konsoli/terminala.
+## Shell Implementation - Phase 1
 
-Wartości używanych poniżej makr są zdefiniowane w pliku `include/config.h`.
+In the first phase, for each subsequent line of input, you need to execute only the first command from the provided list. In Phase 1, we assume that the input is from the console/terminal.
 
-Główna pętla shella:
+Values for the macros used below are defined in the file `include/config.h`.
 
-1. Wypisz prompt na STDOUT.
-1. Wczytaj linię z STDIN.
-1. Sparsuj komendy z linii (wskazane jest użycie dostarczonego parsera).
-1. Jeśli parsowanie zakończyło się sukcesem, wykonaj pierwszą ze sparsowanych komend jako program w procesie potomnym jeśli komenda jest niepusta. Proces shella powinien poczekać na zakończenie procesu potomnego. Obsługa błędów:
-    - Jeśli program zdefiniowany w komendzie nie istnieje, proces potomny powinien wypisać na STDERR `[nazwa programu]: no such file or directory\n`.
-    - Jeśli program zdefiniowany w komendzie istnieje ale nie można go uruchomić z powodu braku praw do uruchomienia dla bieżącego użytkownika, proces potomny powinien wypisać na STDERR `[nazwa programu]: permission denied\n`.
-    - W pozostałych przypadkach gdy nie uda się uruchomić programu, proces potomny powinien wypisać na STDERR `[nazwa programu]: exec error\n`.
-    - W przypadku powyższych niepowodzeń proces potomny powinien zakończyć działanie niepowodzeniem zwracając wartość makra `EXEC_FAILURE` (np. `exit(EXEC_FAILURE)`).
+Main shell loop:
 
-1. Jeśli parsowanie zakończyło się błędem, należy wypisać na STDERR informację o błędzie (wartość makra `SYNTAX_ERROR_STR`) zakończoną znakiem nowej linii `\n`.
-Główna pętla powinna się zakończyć gdy na STDIN zaobserwujemy EOF.
+1. Print the prompt to STDOUT.
+2. Read a line from STDIN.
+3. Parse the commands from the line (using the provided parser is recommended).
+4. If parsing is successful, execute the first parsed command as a program in a child process, provided the command is not empty. The shell process should wait for the child process to finish. Error handling:
+    - If the program specified in the command does not exist, the child process should print to STDERR `[program name]: no such file or directory\n`.
+    - If the program specified in the command exists but cannot be executed due to insufficient permissions for the current user, the child process should print to STDERR `[program name]: permission denied\n`.
+    - In other cases where the program cannot be executed, the child process should print to STDERR `[program name]: exec error\n`.
+    - In the above failure cases, the child process should terminate with a failure, returning the value of the macro `EXEC_FAILURE` (e.g., `exit(EXEC_FAILURE)`).
 
+5. If parsing fails, print an error message to STDERR (the value of the macro `SYNTAX_ERROR_STR`), ending with a newline character `\n`.
+The main loop should end when EOF is observed on STDIN.
 
-Założenia tymczasowe:
-- Linie przychodzą w całości (jeden `read` z STDIN zwraca jedną linię).
+Temporary assumptions:
+- Lines come in whole (one `read` from STDIN returns one line).
 
+Requirements:
+- The length of the line should not exceed the value of the macro `MAX_LINE_LENGTH`. Lines longer than this value should be treated as syntax errors and should not be passed to the parser.
+- Only `read` can be used for reading from standard input.
+- When searching for a program to execute, consider directories specified in the `PATH` environment variable (see `execvp`).
+- The default prompt is given by the macro `PROMPT_STR`.
 
-Wymagania:
-- Długość linii nie powinna przekraczać wartości makra `MAX_LINE_LENGTH`. Linie dłuższe niż ta wartość powinny być traktowane jako syntax error i nie powinny być przekazywane do parsera.
-- Do wczytywania ze standartowego wejścia wolno używać jedynie `read`.
-- Przy poszukiwaniu programu do wykonania należy uwzględnić katalogi ze zmiennej środowiskowej `PATH` (patrz `execvp`).
-- Domyślny prompt jest zadany przez makro `PROMPT_STR`.
+Syscall checklist (the following syscalls should appear in the code):
+    `read`, `write`, `fork`, `exec`, `wait/waitpid`
 
+Additional:
+- Simple functions implemented in the file `utils.c` may be useful for debugging.
+- It is expected that defined header and source files, other than `mshell.c`, may be extended/modified in subsequent phases. Therefore, it is best to place your own code in `mshell.c` or in files created by you.
 
-Syscall checklist (następujące syscalle powinny się pojawić w kodzie):
-	`read`, `write`, `fork`, `exec`, `wait/waitpid`
-
-Dodatkowo:
-- W pliku `utils.c` zaimplementowane są proste funkcje, które mogą się przydać do debugowania.
-- Należy się spodziewać że zdefiniowane pliki nagłówkowe oraz źródła, poza `mshell.c` mogą zostać rozszerzone/zmienione w kolejnych etapach. Dlatego własny kod najlepiej umieszczać w `mshell.c` lub stworzonych przez siebie plikach.
-
-
-Przykład sesji (sesję kończymy CTRL-D który powoduje pojawienie się EOF na STDIN):
+Example session (end the session with CTRL-D which results in EOF on STDIN):
 ```
 >./mshell
 $ ls /home
