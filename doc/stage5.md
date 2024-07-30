@@ -1,24 +1,25 @@
-# SO-shell-etap5
-*Specyfikacja piątego etapu projektu realizowanego w ramach ćwiczeń do przedmiotu Systemy Operacyjne.*
+# OS Shell - Phase 5
 
-## Implementacja shella - etap 5 (wykonywanie procesów w tle i obsługa sygnałów).
+*Specification for the fifth phase of the project carried out as part of the Operating Systems course exercises.*
 
-1. Wszystkie polecenia linii w której ostatnim niebiałym znakiem jest `&` powinny być wykonane w tle. Proces shella powinien je uruchomić ale nie czekać aż się zakończą. Można założyć, że jeśli polecenia w pipeline mają być uruchomione w tle to wśród nich  nie występują komendy shella (tzn. wszystkie polecenia można potraktować jak programy). Do sprawdzenia czy pipeline ma być wykonany w tle służy flaga `LINBACKGROUND` w polu `flags` struktury `pipeline`.
+## Shell Implementation - Phase 5 (Background Processes and Signal Handling)
 
-2. Proces shella powinien sprawdzać statusy zakończonych dzieci. W przypadku pracy bez wypisywania prompta statusy te można ignorować, w przypadku trybu z promptem należy wypisywać informacje o zakończonych procesach z tła **przed kolejnym  wypisaniem prompta** w formacie:
+1. All commands on a line where the last non-whitespace character is `&` should be executed in the background. The shell process should start them but not wait for their completion. You can assume that if commands in a pipeline are to be run in the background, they do not include shell built-in commands (i.e., all commands can be treated as programs). To check if a pipeline should be executed in the background, use the `LINBACKGROUND` flag in the `flags` field of the `pipeline` structure.
+
+2. The shell process should monitor the statuses of terminated child processes. When operating with a prompt, it should print information about terminated background processes **before displaying the next prompt** in the following format:
 ```
 Background process (pid) terminated. (exited with status (status))
 Background process (pid) terminated. (killed by signal (signo))
 ```
 
-3. Należy zadbać o to żeby nie zostawiać procesów zombie. W przypadku trybu z promptem należy uwzględnić przypadek kiedy prompt nie będzie wypisany przez długi czas (np. `sleep 10 | sleep 10 & sleep 1000000`). Dopuszaczalne jest rozwiązanie które przechowuje jedynie ustaloną liczbę statusów (będącą stałą kompilacji) zakończeń dzieci aż do wypisania prompta a statusy pozostałych dzieci zapomina.
 
-4. CTRL-C wysyła sygnał `SIGINT` do wszystkich procesów z grupy procesów foreground'u. Należy zadbać o to żeby sygnał ten nie docierał do procesów z tła. Przy tym procesy uruchomione w tle powinny mieć zarejestrowaną domyślną obsługę tego sygnału.
+3. Ensure that no zombie processes are left. When operating with a prompt, account for cases where the prompt is not printed for a long time (e.g., `sleep 10 | sleep 10 & sleep 1000000`). A permissible solution is to store only a fixed number of child termination statuses (as a compile-time constant) until the prompt is printed, and forget the statuses of remaining children.
+
+4. CTRL-C sends the `SIGINT` signal to all processes in the foreground process group. Ensure that this signal does not reach background processes. At the same time, background processes should have the default handling of this signal registered.
 
 Syscall checklist: `sigaction`, `sigprocmask`, `sigsuspend`, `setsid`
 
-
-Przykład sesji:
+Example session:
 ```
 $ sleep 20 | sleep 21 | sleep 22 &
 $ ps ax | grep sleep
