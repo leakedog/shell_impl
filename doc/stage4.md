@@ -1,28 +1,28 @@
-# SO-shell-etap4
-*Specyfikacja czwartego etapu projektu realizowanego w ramach ćwiczeń do przedmiotu Systemy Operacyjne.*
+# OS Shell - Phase 4
 
-## Implementacja shella - etap 4 (przekierowanie we/wy i łączenie komend pipe'ami).
+*Specification for the fourth phase of the project carried out as part of the Operating Systems course exercises.*
 
+## Shell Implementation - Phase 4 (Input/Output Redirection and Piping Commands)
 
-1. Każdy program uruchamiany z shella może mieć przekierowane wejście i wyjście. Przekierowania dla wbudowanych poleceń shella można ignorować. Lista `redirs` w strukturze `command` zawiera przekierowania zdefiniowane dla danej komendy.
+1. Each program launched from the shell may have redirected input and output. Redirections for built-in shell commands can be ignored. The `redirs` list in the `command` structure contains the redirections defined for a given command.
 
-  - Przekierowanie wejścia: jeżeli pole `flags` w w strukturze `redir` spełnia makro `IS_RIN(x)` to nowo uruchomiony program powinien mieć otwarty plik o nazwie wskazanej przez pole `filename` na standardowym wejściu (deskryptor `0`).
+  - Input Redirection: If the `flags` field in the `redir` structure matches the macro `IS_RIN(x)`, the newly launched program should have a file specified by the `filename` field opened on standard input (descriptor `0`).
 
-  - Przekierowanie wyjścia: jeżeli pole `flags` w w strukturze `redir` spełnia makro `IS_ROUT(x)` lub `IS_RAPPEND(x)` to nowo uruchomiony program powinien mieć otwarty plik o nazwie wskazanej przez pole `filename` na standardowym wyjściu (deskryptor `1`). Dodatkowo jeśli flagi spełniają makro `IS_RAPPEND(x)` to plik powinien zostać otwarty w trybie dopisywania (`O_APPEND`), w przeciwnym przypadku zawartość pliku powinna zostać wyczyszczona (`O_TRUNC`). W przypadku gdy plik do którego przekierowane jest wyjście nie istnieje, powinien zostać stworzony.
+  - Output Redirection: If the `flags` field in the `redir` structure matches the macro `IS_ROUT(x)` or `IS_RAPPEND(x)`, the newly launched program should have a file specified by the `filename` field opened on standard output (descriptor `1`). Additionally, if the flags match the macro `IS_RAPPEND(x)`, the file should be opened in append mode (`O_APPEND`); otherwise, the file content should be truncated (`O_TRUNC`). If the file to which output is redirected does not exist, it should be created.
 
-  Należy obsłużyć następujące błędy:
-  - plik nie istnieje -> wypisz na stderr: `(nazwa pliku): no such file or directory\n`,
-  - brak odpowiednich praw dostępu ->  wypisz na stderr: `(nazwa pliku):  permission denied\n`.
+  Handle the following errors:
+  - File does not exist -> print to stderr: `(filename): no such file or directory\n`,
+  - Insufficient access rights -> print to stderr: `(filename): permission denied\n`.
 
-  Można przyjąć że lista przekierowań dla każdej komendy zawiera co najwyżej jedno przekierowanie wejścia i co najwyżej jedno przekierowanie wyjścia.
+  You can assume that the redirection list for each command contains at most one input redirection and at most one output redirection.
 
-1. Polecenia w jednej linii mogą być połączone pipe'ami `|`. Ciąg takich komend będziemy nazywać pipeline. W przypadku gdy pipeline zawiera więcej niż jedno polecenie można założyć że żadne z nich nie jest komendą wbudowaną shella. Należy wykonać wszystkie polecenia pipeline'a, każde w osobnym procesie potomnym shella. Kolejne polecenia powinny być połączone pipe'ami tak aby wyjście procesu realizującego polecenie k trafiało na wejście procesu polecenia k+1. Shell powinien zawiesić swoje działanie do momentu aż **wszystkie** procesy realizujące polecenia pipeline'a się zakończą. Jeśli polecenie ma zdefiniowane przekierowanie(a) we/wy to mają one pierwszeństwo przed pipe'ami.
+2. Commands on a single line can be connected with pipes `|`. A sequence of such commands is called a pipeline. If the pipeline contains more than one command, assume that none of them is a shell built-in command. Execute all commands in the pipeline, each in a separate child process of the shell. Subsequent commands should be connected by pipes so that the output of the command k goes to the input of the command k+1. The shell should suspend its operation until **all** processes executing the pipeline commands have finished. If a command has defined input/output redirection(s), they take precedence over the pipes.
 
-1. W jednej linii możne być zdefiniowanych wiele pipeline'ów oddzielonych znakiem `;` (lub `&`). Należy je wykonać sekwencyjnie tzn. wykonać pierwszy poczekać aż wszystkie procesy się zakończą i dopiero wtedy wykonać drugi itd.
+3. On a single line, multiple pipelines can be defined, separated by `;` (or `&`). They should be executed sequentially, i.e., execute the first, wait until all processes finish, and then execute the second, and so on.
 
-Uwaga! Parser akceptuje linie w których znajdują się puste komendy. W szczególności linia zawierająca `ls | sort ; ls |  | wc` zostanie poprawnie sparsowana. Jeśli w linii występuje pipeline o długości przynajmniej 2 zawierający pustą komendę to należy taką linię w całości zignorować i ogłosić syntax error.
+Note: The parser accepts lines containing empty commands. In particular, a line containing `ls | sort ; ls |  | wc` will be correctly parsed. If a line contains a pipeline of at least length 2 with an empty command, such a line should be ignored in its entirety and a syntax error should be declared.
 
-Przykład sesji (porównaj wyniki z tym co robi np. bash):
+Example session (compare results with what is done, e.g., in bash):
 ```
 $ ls > a
 $ ls >> a
@@ -48,4 +48,4 @@ yawn
 
 Syscall checklist: `open`, `close`, `pipe`, `dup/dup2/fcntl`.
 
-Testy zostały rozbudowane o zestaw 3 obejmujący przekierowania i łączenie komend pipe'ami.
+Tests have been expanded with a set 3 covering redirections and command piping.
